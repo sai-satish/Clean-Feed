@@ -5,3 +5,6 @@ tensorflow
 numpy
 pillow
 google-generativeai
+python-multipart
+joblib
+sklearn

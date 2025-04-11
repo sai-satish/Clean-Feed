@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
 import logging
+from recommendation_system import predict_user_genres
 
 app = FastAPI()
 
@@ -140,6 +141,13 @@ def predict_age_gender(image_bytes, age_type='regression', age_bins=None):
         predicted_age = int(np.clip(age_pred[0][0], 0, 100))
 
     return predicted_age, predicted_gender
+
+@app.get("/get-recommendations/")
+def get_recommendations(userId:int):
+    # userId = 1234
+    predicted = predict_user_genres(f"temp/{userId}.csv")
+    print(f"Top genres predicted for user {userId}:", predicted)
+    return predicted
 
 @app.get("/")
 def read_root():
