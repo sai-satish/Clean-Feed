@@ -1,0 +1,7 @@
+python-dotenv
+fastapi
+opencv-python
+tensorflow
+numpy
+pillow
+google-generativeai
