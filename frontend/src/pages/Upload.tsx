@@ -55,8 +55,10 @@ const Upload = () => {
     try {
       // Create form data to send the file and caption
       const formData = new FormData();
-      formData.append('video', selectedFile);
-      formData.append('caption', caption);
+      formData.append('file', selectedFile);
+            formData.append('userId', "3456");
+
+      // formData.append('caption', caption);
 
       // Send the request to the backend
       const response = await fetch('http://localhost:8000/upload', {
@@ -110,15 +112,18 @@ const Upload = () => {
                   Drag and drop a video file, or click to browse
                 </p>
 
+                {/* File input needs to be outside the label but referenced by it */}
                 <Input
                   type="file"
                   accept="video/*"
                   onChange={handleFileChange}
-                  className="hidden"
+                  // className="hidden"
                   id="file-upload"
+
                   disabled={isLoading}
                 />
 
+                {/* Label points to the input by matching the htmlFor with input id */}
                 <label htmlFor="file-upload">
                   <Button
                     type="button"
