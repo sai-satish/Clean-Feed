@@ -8,3 +8,10 @@ google-generativeai
 python-multipart
 joblib
 scikit-learn
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+python-dotenv
+motor
+pydantic[email]
+cloudinary

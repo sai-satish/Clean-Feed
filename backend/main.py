@@ -15,6 +15,7 @@ from cloudinary_utils import upload_to_cloudinary
 from reels_schema import ReelModel
 from bson import ObjectId
 import json
+from csv_file_handling import *
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -109,6 +110,122 @@ async def read_users_me(current_user: dict = Depends(get_current_active_user)):
 @app.get("/auth/validate-token")
 async def validate_token(current_user: dict = Depends(get_current_active_user)):
     return {"message": "Token is valid", "user_id": str(current_user["_id"])}
+
+import json
+from csv_file_handling import *
+
+#user Interactions
+
+@app.post("/toggle_like/")
+async def toggle_like(userId: str = "1234", fileName: str = "hello"):
+    metadata_file = Path(f"{fileName}.metadata.json")
+    csv_file = Path(f"{userId}.csv")
+
+    if not metadata_file.exists():
+        return {"error": "Metadata file not found"}
+
+    try:
+        with open(metadata_file, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+
+        genres = repr(metadata.get("genres", []))
+        tags = repr(metadata.get("tags", []))
+
+        rows = []
+        target_index = None
+        liked_value = False
+
+        if csv_file.exists():
+            with open(csv_file, "r", encoding="utf-8", newline='') as f:
+                reader = csv.DictReader(f)
+                header = reader.fieldnames
+                for i, row in enumerate(reader):
+                    if (
+                        row.get("userId") == userId
+                        and row.get("genres") == genres
+                        and row.get("tags") == tags
+                    ):
+                        liked_value = row.get("liked", "False").strip() == "True"
+                        target_index = i
+                    rows.append(row)
+
+        if target_index is not None:
+            rows[target_index]["liked"] = str(not liked_value)
+
+            # Write updated rows back to CSV
+            with open(csv_file, "w", encoding="utf-8", newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=header)
+                writer.writeheader()
+                for row in rows:
+                    writer.writerow(row)
+
+            return {"message": f"'liked' status toggled to {not liked_value}"}
+        else:
+            return {"error": "Matching row not found in CSV"}
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/fetch-next-url/")
+def fetch_next_url(viewed_urls, userId: str = "1234", count: int = 1):
+    try:
+        VIDEO_CSV_PATH = Path(f"{userId}.csv")
+        if not VIDEO_CSV_PATH.exists():
+            return JSONResponse(status_code=404, content={"error": "Video data file not found"})
+
+        # Get genre recommendations
+        print("recommendations called.")
+        recommended_genres = get_recommendations(userId)
+        print("recommendations got")
+        # Filter videos
+        video_candidates = []
+        VIDEO_CSV_PATH = Path("videos.csv")
+        with open(VIDEO_CSV_PATH, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                video_url = row.get("video_url", "").strip()
+                if not video_url or video_url in viewed_urls:
+                    continue
+
+                # Load and clean genre list
+                try:
+                    genre_list = json.loads(row.get("genre", "[]"))
+                    if not isinstance(genre_list, list):
+                        continue
+                except json.JSONDecodeError:
+                    continue
+
+                # Check if any genre in recommended list matches
+                matched_weights = [
+                    len(recommended_genres) - recommended_genres.index(g)
+                    for g in genre_list if g in recommended_genres
+                ]
+
+                if matched_weights:
+                    # Use the max weight among matched genres for this video
+                    max_weight = max(matched_weights)
+                    video_candidates.append((max_weight, video_url))
+
+        # Sort by descending weight
+        video_candidates.sort(reverse=True)
+
+        # Pick top N
+        selected_urls = [url for _, url in video_candidates[:count]]
+
+        if not selected_urls:
+            return JSONResponse(status_code=404, content={"message": "No new videos found for this user."})
+
+        return {
+            "userId": userId,
+            "recommended_genres": recommended_genres,
+            "next_urls": selected_urls
+        }
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    
+
 
 @app.post("/upload/")
 async def upload_file(
@@ -244,7 +361,7 @@ async def finalize_upload(
 @app.get("/get-recommendations/")
 def get_recommendations(userId: int, current_user: dict = Depends(get_current_active_user)):
     # userId = 1234
-    predicted = predict_user_genres(f"temp/{userId}.csv")
+    predicted = predict_user_genres(f"{userId}.csv")
     print(f"Top genres predicted for user {userId}:", predicted)
     return predicted
 
