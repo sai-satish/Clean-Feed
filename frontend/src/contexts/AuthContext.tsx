@@ -1,114 +1,198 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { users } from '../constants/mockData';
+import axios from 'axios';
 
-interface User {
-  id: string;
-  username: string;
-  name: string;
-  email: string;
-  profilePic: string;
-}
+const API_URL = 'http://localhost:8000';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  signup: (name: string, username: string, email: string, password: string) => Promise<boolean>;
+  signup: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  username?: string;
+  profilePic?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Setup axios interceptor for authentication once on component mount
   useEffect(() => {
-    // Check if user is logged in from localStorage
-    const storedUser = localStorage.getItem('reelverse_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const token = localStorage.getItem('token');
+
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
     }
-    setIsLoading(false);
+
+    // Load user data from localStorage if available
+    const storedUser = localStorage.getItem('user');
+
+    if (storedUser && token) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+      } catch (e) {
+        console.error('Failed to parse stored user data');
+      }
+    }
+
+    // Check authentication status from API
+    if (token) {
+      checkAuthStatus();
+    } else {
+      setIsLoading(false);
+    }
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulating API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo purposes, we'll accept any credential with valid format
-    // and randomly assign a profile from our users array
-    if (email && password && password.length >= 6) {
-      const randomUserIndex = Math.floor(Math.random() * users.length);
-      const mockUser = users[randomUserIndex];
-      
-      const loggedInUser = {
-        id: Date.now().toString(),
-        username: mockUser.username,
-        name: mockUser.name,
-        email: email,
-        profilePic: mockUser.profilePic
-      };
-      
-      setUser(loggedInUser);
-      localStorage.setItem('reelverse_user', JSON.stringify(loggedInUser));
-      return true;
+  const checkAuthStatus = async () => {
+    setIsLoading(true);
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsLoading(false);
+      return;
     }
-    
-    return false;
+
+    try {
+      // Get user profile from token
+      const response = await axios.get(`${API_URL}/auth/me`);
+      const userData = response.data;
+
+      // Save updated user data to localStorage
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      setUser(userData);
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      // Don't clear token on failed auth check - server might be temporarily down
+      // Only clear if response code indicates authentication problem (401/403)
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const signup = async (name: string, username: string, email: string, password: string): Promise<boolean> => {
-    // Simulating API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo purposes, we'll accept any valid format
-    if (name && username && email && password && password.length >= 6) {
-      const newUser = {
-        id: Date.now().toString(),
-        username,
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/login`, {
+        email,
+        password
+      });
+
+      const { access_token, user: userData } = response.data;
+
+      // Save token
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      // Set auth header
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+
+      // Update state IMMEDIATELY - this is key to fixing the issue
+      setUser(userData);
+      setIsAuthenticated(true);
+
+      return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+
+      if (error.response) {
+        console.error('Error data:', error.response.data);
+      }
+
+      return false;
+    }
+  };
+
+  const signup = async (name: string, email: string, password: string): Promise<boolean> => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/signup`, {
         name,
         email,
-        profilePic: `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 100)}.jpg`
-      };
-      
-      setUser(newUser);
-      localStorage.setItem('reelverse_user', JSON.stringify(newUser));
+        password
+      });
+
+      const { access_token, user: userData } = response.data;
+
+      // Save token
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      // Set auth header
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+
+      // Update state IMMEDIATELY - this is key to fixing the issue
+      setUser(userData);
+      setIsAuthenticated(true);
+
       return true;
+    } catch (error) {
+      console.error('Signup failed:', error);
+
+      if (error.response) {
+        console.error('Error data:', error.response.data);
+      }
+
+      return false;
     }
-    
-    return false;
   };
 
   const logout = () => {
+    // Remove token
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
+    // Remove auth header
+    delete axios.defaults.headers.common['Authorization'];
+
+    // Reset state
     setUser(null);
-    localStorage.removeItem('reelverse_user');
+    setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated: !!user, 
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated,
       isLoading,
-      login, 
-      signup, 
-      logout 
+      login,
+      signup,
+      logout
     }}>
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+
+  return context;
 };

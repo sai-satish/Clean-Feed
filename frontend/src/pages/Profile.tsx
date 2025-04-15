@@ -16,10 +16,10 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('posts');
-  
+
   // Generate some mock content for the profile
   const userPosts = generateFeed().slice(0, 9);
-  
+
   const handleLogout = () => {
     logout();
     toast({
@@ -28,27 +28,27 @@ const Profile = () => {
     });
     navigate('/login');
   };
-  
+
   if (!user) return null;
-  
+
   return (
     <div className="app-container">
       <Header />
-      
+
       <main className="page-container">
         <div className="p-4">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <Avatar src={user.profilePic} alt={user.name} size="xl" border />
-              
+              <Avatar src={user.profilePic || "https://www.citypng.com/public/uploads/preview/download-profile-user-round-purple-icon-symbol-png-701751695033518isbhujfjbf.png?v=2025040705"} alt={user.name} size="xl" border />
+
               <div>
                 <h1 className="text-xl font-bold">{user.username}</h1>
                 <p className="text-muted-foreground">{user.name}</p>
               </div>
             </div>
-            
-            <Button 
-              variant="ghost" 
+
+            <Button
+              variant="ghost"
               size="icon"
               onClick={handleLogout}
               className="text-foreground"
@@ -56,7 +56,7 @@ const Profile = () => {
               <LogOut size={20} />
             </Button>
           </div>
-          
+
           <div className="grid grid-cols-3 gap-4 mb-6 text-center">
             <div>
               <p className="font-bold">{formatNumber(userPosts.length)}</p>
@@ -71,16 +71,16 @@ const Profile = () => {
               <p className="text-xs text-muted-foreground">Following</p>
             </div>
           </div>
-          
+
           <div className="flex gap-4 mb-4">
-            <Button 
+            <Button
               className="flex-1 bg-purple-gradient hover:opacity-90 transition-opacity"
               onClick={() => navigate('/upload')}
             >
               Upload Reel
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="flex-1"
               onClick={() => {}}
             >
@@ -88,7 +88,7 @@ const Profile = () => {
               Edit Profile
             </Button>
           </div>
-          
+
           <div className="border-t border-border">
             <div className="flex mt-2">
               <button
@@ -110,7 +110,7 @@ const Profile = () => {
                 <Bookmark size={20} />
               </button>
             </div>
-            
+
             <div className="mt-4">
               {activeTab === 'posts' && (
                 <div className="grid grid-cols-3 gap-1">
@@ -123,7 +123,7 @@ const Profile = () => {
                   ))}
                 </div>
               )}
-              
+
               {activeTab === 'reels' && (
                 <div className="grid grid-cols-3 gap-1">
                   {userPosts.slice(0, 6).map((post, index) => (
@@ -135,7 +135,7 @@ const Profile = () => {
                   ))}
                 </div>
               )}
-              
+
               {activeTab === 'saved' && (
                 <div className="py-8 text-center">
                   <Bookmark size={48} className="mx-auto mb-4 text-muted-foreground" />
@@ -148,7 +148,7 @@ const Profile = () => {
           </div>
         </div>
       </main>
-      
+
       <BottomNav />
     </div>
   );

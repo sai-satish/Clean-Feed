@@ -3,7 +3,6 @@ import json
 import os
 from dotenv import load_dotenv
 import mimetypes
-import google.generativeai as genai
 from PIL import Image
 import google.generativeai as genai
 # from google.generativeai import types
@@ -20,7 +19,7 @@ You are a smart media classifier and content advisor.
 Analyze this visual content and answer:
 
 1. What is the most appropriate **age group** for the content? (e.g., "1-2", "2-4", "4-7", "6-10", "10-15", "13-18", "18-25", ...)
-2. Suggest **3–7 tags** that describe the content. if not possbile to suggest more tags just give me 
+2. Suggest **3–7 tags** that describe the content. if not possbile to suggest more tags just give me
 3. Identify potential **genres** it belongs to (e.g., Comedy, Education, Horror, Thriller, Sports, Documentary, etc.)
 
 Respond in JSON format like:

@@ -7,4 +7,4 @@ pillow
 google-generativeai
 python-multipart
 joblib
-sklearn
+scikit-learn

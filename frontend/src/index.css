@@ -91,44 +91,57 @@
   .app-container {
     @apply max-w-screen-md mx-auto h-screen flex flex-col;
   }
-  
+
   .page-container {
     @apply flex-1 overflow-y-auto pb-16;
   }
-  
+
   .bottom-nav {
     @apply fixed bottom-0 left-0 right-0 bg-background border-t border-border h-16 flex items-center justify-around px-4 max-w-screen-md mx-auto;
   }
-  
+
   .nav-item {
     @apply flex flex-col items-center justify-center gap-1 text-muted-foreground;
   }
-  
+
   .nav-item.active {
     @apply text-reelverse-primary;
   }
-  
+
   .gradient-text {
     @apply bg-clip-text text-transparent bg-purple-gradient;
   }
-  
+
   .reel-card {
     @apply border border-border rounded-lg overflow-hidden bg-card shadow-sm mb-4;
   }
-  
+
   .reel-header {
     @apply flex items-center gap-3 p-3;
   }
-  
+
   .reel-footer {
     @apply p-3;
   }
-  
+
   .auth-form {
     @apply space-y-4 p-6 rounded-lg border border-border bg-card shadow-sm max-w-md w-full;
   }
-  
+
   .auth-container {
     @apply min-h-screen flex flex-col items-center justify-center p-4;
   }
+}
+
+@font-face {
+  font-family: 'Mona Sans';
+  src:
+    url('/Mona-Sans.woff2') format('woff2 supports variations'),
+    url('/Mona-Sans.woff2') format('woff2-variations');
+  font-weight: 200 900;
+  font-stretch: 75% 125%;
+}
+
+* {
+  font-family: "Mona Sans", "Mona Sans Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol" !important;
 }

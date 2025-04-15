@@ -23,12 +23,12 @@ const ReelCard: React.FC<ReelCardProps> = ({ reel, user }) => {
           </span>
         </div>
       </div>
-      
+
       {/* Video Content */}
       <div className="relative w-full">
         <VimeoPlayer videoId={reel.videoId} />
       </div>
-      
+
       <div className="reel-footer">
         <div className="flex justify-between mb-3">
           <div className="flex gap-4">
@@ -46,13 +46,13 @@ const ReelCard: React.FC<ReelCardProps> = ({ reel, user }) => {
             <Bookmark size={24} />
           </button>
         </div>
-        
+
         <div className="space-y-2">
           <div className="flex gap-4 text-sm">
             <span className="font-medium">{formatNumber(reel.likes)} likes</span>
             <span className="text-muted-foreground">{formatNumber(reel.comments)} comments</span>
           </div>
-          
+
           <p className="text-sm">
             <span className="font-semibold">{user.username}</span>
             {' '}

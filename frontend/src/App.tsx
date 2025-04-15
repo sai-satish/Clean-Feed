@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,7 +18,14 @@ import Profile from "./pages/Profile";
 import Upload from "./pages/Upload";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -33,7 +39,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            
+
             {/* Protected Routes */}
             <Route path="/home" element={
               <ProtectedRoute>
@@ -60,7 +66,10 @@ const App = () => (
                 <Upload />
               </ProtectedRoute>
             } />
-            
+
+            {/* Redirect /auth to login */}
+            <Route path="/auth" element={<Navigate to="/login" replace />} />
+
             {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>

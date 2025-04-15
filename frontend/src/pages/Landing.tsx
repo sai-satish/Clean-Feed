@@ -1,11 +1,20 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import  { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/Logo';
 import { ArrowRight, Heart, Video, Upload, Users } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Landing = () => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/home');
+    }
+  }, [isAuthenticated, navigate]);
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="py-4 px-6 flex justify-between items-center">
@@ -21,24 +30,24 @@ const Landing = () => {
           </Link>
         </div>
       </header>
-      
+
       <main className="flex-1 py-12">
         <section className="container max-w-6xl mx-auto px-4 md:px-6 py-12">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-                Share Your World Through 
+                Share Your World Through
                 <span className="block bg-clip-text text-transparent bg-purple-gradient">
                   Captivating Reels
                 </span>
               </h1>
-              
+
               <p className="text-lg text-muted-foreground">
                 Join millions creating and sharing moments that matter. ReelVerse connects you with friends, family, and creators around the world.
               </p>
-              
+
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Link to="/signup">
+                <Link to="/login">
                   <Button size="lg" className="bg-purple-gradient hover:opacity-90 transition-opacity w-full sm:w-auto">
                     Get Started <ArrowRight className="ml-2" size={18} />
                   </Button>
@@ -50,7 +59,7 @@ const Landing = () => {
                 </Link>
               </div>
             </div>
-            
+
             <div className="relative">
               <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-reelverse-primary/20 rounded-full blur-3xl"></div>
               <div className="relative bg-card rounded-xl overflow-hidden shadow-lg border border-border">
@@ -73,13 +82,13 @@ const Landing = () => {
             </div>
           </div>
         </section>
-        
+
         <section className="bg-purple-gradient/10 py-16">
           <div className="container max-w-6xl mx-auto px-4 md:px-6">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
               Why Choose <span className="bg-clip-text text-transparent bg-purple-gradient">ReelVerse</span>
             </h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
                 <div className="w-12 h-12 rounded-full bg-purple-gradient flex items-center justify-center mb-4">
@@ -88,7 +97,7 @@ const Landing = () => {
                 <h3 className="text-xl font-bold mb-2">Engaging Reels</h3>
                 <p className="text-muted-foreground">Create and discover short, captivating videos that tell your story in seconds.</p>
               </div>
-              
+
               <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
                 <div className="w-12 h-12 rounded-full bg-purple-gradient flex items-center justify-center mb-4">
                   <Upload className="text-white" size={24} />
@@ -96,7 +105,7 @@ const Landing = () => {
                 <h3 className="text-xl font-bold mb-2">Easy Sharing</h3>
                 <p className="text-muted-foreground">Upload and share your moments with friends and followers with just a few taps.</p>
               </div>
-              
+
               <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
                 <div className="w-12 h-12 rounded-full bg-purple-gradient flex items-center justify-center mb-4">
                   <Heart className="text-white" size={24} />
@@ -108,7 +117,7 @@ const Landing = () => {
           </div>
         </section>
       </main>
-      
+
       <footer className="bg-card border-t border-border py-8">
         <div className="container max-w-6xl mx-auto px-4 md:px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
