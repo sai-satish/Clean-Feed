@@ -16,6 +16,9 @@ from reels_schema import ReelModel
 from bson import ObjectId
 import json
 
+# Import the reels endpoints router
+from reels_endpoints import init_reels_router
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,6 +52,10 @@ MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 client = AsyncIOMotorClient(MONGO_URL)
 db = client.cleanfeed_db
 reels_collection = db.reels
+
+# Initialize and include the reels router
+reels_router = init_reels_router(reels_collection)
+app.include_router(reels_router)
 
 # Authentication endpoints
 @app.post("/auth/signup", response_model=Token)
