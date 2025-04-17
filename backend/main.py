@@ -53,6 +53,9 @@ MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 client = AsyncIOMotorClient(MONGO_URL)
 db = client.cleanfeed_db
 reels_collection = db.reels
+collection = db.userVideos
+users_collection = db.users
+user_interactions_collection = db.user_interactions_collection
 
 # Initialize and include the reels router
 reels_router = init_reels_router(reels_collection)
@@ -123,101 +126,119 @@ from csv_file_handling import *
 
 #user Interactions
 
-@app.post("/toggle_like/")
-async def toggle_like(userId: str = "1234", fileName: str = "hello"):
-    metadata_file = Path(f"{fileName}.metadata.json")
-    csv_file = Path(f"{userId}.csv")
 
-    if not metadata_file.exists():
-        return {"error": "Metadata file not found"}
-
+@app.get("/generate_user_entry/")
+async def generate_user_entry(userId: str = "67fd69e1aab3bb979c9a529c", fileName: str = "67fe6cfa5a0f736c67f5d559"):
     try:
-        with open(metadata_file, "r", encoding="utf-8") as f:
-            metadata = json.load(f)
+        # Fetch video metadata using fileName as _id from reels_collection
+        metadata_doc = await reels_collection.find_one({"_id": ObjectId(fileName)})
+        if not metadata_doc:
+            return JSONResponse(status_code=404, content={"error": "Metadata not found in DB."})
 
-        genres = repr(metadata.get("genres", []))
-        tags = repr(metadata.get("tags", []))
+        genres = metadata_doc.get("genres", [])
+        tags = metadata_doc.get("tags", [])
+        video_url = metadata_doc.get("videoUrl", "")
 
-        rows = []
-        target_index = None
-        liked_value = False
+        # Correct duplicate check
+        existing = await user_interactions_collection.find_one({
+            "userId": userId,
+            "videoUrl": video_url  # corrected here
+        })
 
-        if csv_file.exists():
-            with open(csv_file, "r", encoding="utf-8", newline='') as f:
-                reader = csv.DictReader(f)
-                header = reader.fieldnames
-                for i, row in enumerate(reader):
-                    if (
-                        row.get("userId") == userId
-                        and row.get("genres") == genres
-                        and row.get("tags") == tags
-                    ):
-                        liked_value = row.get("liked", "False").strip() == "True"
-                        target_index = i
-                    rows.append(row)
+        if existing:
+            return {"message": "Duplicate entry. No video added."}
 
-        if target_index is not None:
-            rows[target_index]["liked"] = str(not liked_value)
+        new_entry = {
+            "userId": userId,
+            "tags": tags,
+            "genres": genres,
+            "liked": False,
+            "watch_duration": 0,
+            "videoUrl": video_url,
+        }
 
-            # Write updated rows back to CSV
-            with open(csv_file, "w", encoding="utf-8", newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=header)
-                writer.writeheader()
-                for row in rows:
-                    writer.writerow(row)
+        await user_interactions_collection.insert_one(new_entry)
+        return {"message": "Video entry added for user."}
 
-            return {"message": f"'liked' status toggled to {not liked_value}"}
-        else:
-            return {"error": "Matching row not found in CSV"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+        
+@app.post("/toggle_like/")
+async def toggle_like(userId: str = "67fd69e1aab3bb979c9a529c", fileName: str = "67fe6cfa5a0f736c67f5d559"):
+    try:
+        # 1. Fetch the corresponding metadata from the `reels_collection` using the fileName
+        metadata_doc = await reels_collection.find_one({"_id": ObjectId(fileName)})
+        if not metadata_doc:
+            return JSONResponse(status_code=404, content={"error": "Metadata not found in DB."})
+
+        video_url = metadata_doc.get("videoUrl", "")
+        if not video_url:
+            return JSONResponse(status_code=400, content={"error": "Video URL missing in metadata."})
+
+        # 2. Find the interaction record in user_interactions_collection using userId + videoUrl
+        interaction_doc = await user_interactions_collection.find_one({
+            "userId": userId,
+            "videoUrl": video_url
+        })
+
+        if not interaction_doc:
+            return JSONResponse(status_code=404, content={"error": "User interaction entry not found."})
+
+        # 3. Toggle 'liked' status
+        current_liked = interaction_doc.get("liked", False)
+        new_liked = not current_liked
+
+        # 4. Update in DB
+        await user_interactions_collection.update_one(
+            {"userId": userId, "videoUrl": video_url},
+            {"$set": {"liked": new_liked}}
+        )
+
+        return {"message": f"'liked' status toggled to {new_liked}"}
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 @app.get("/fetch-next-url/")
-def fetch_next_url(viewed_urls, userId: str = "1234", count: int = 1):
+async def fetch_next_url(userId: str = "67fd69e1aab3bb979c9a529c", count: int = 1):
     try:
-        VIDEO_CSV_PATH = Path(f"{userId}.csv")
-        if not VIDEO_CSV_PATH.exists():
-            return JSONResponse(status_code=404, content={"error": "Video data file not found"})
-
-        # Get genre recommendations
+        # 1. Get genre recommendations
         print("recommendations called.")
-        recommended_genres = get_recommendations(userId)
+        recommended_genres = await get_recommendations(userId)
         print("recommendations got")
-        # Filter videos
+        print("recommended_genres",recommended_genres)
+
+        # 2. Get viewed URLs from user_interactions_collection
+        viewed_docs = await user_interactions_collection.find({"userId": userId}).to_list(length=None)
+        viewed_urls = {doc.get("videoUrl") for doc in viewed_docs if doc.get("videoUrl")}
+
+        # 3. Fetch all video documents
+        video_docs = await db["reels"].find({}).to_list(length=None)
         video_candidates = []
-        VIDEO_CSV_PATH = Path("videos.csv")
-        with open(VIDEO_CSV_PATH, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                video_url = row.get("video_url", "").strip()
-                if not video_url or video_url in viewed_urls:
-                    continue
 
-                # Load and clean genre list
-                try:
-                    genre_list = json.loads(row.get("genre", "[]"))
-                    if not isinstance(genre_list, list):
-                        continue
-                except json.JSONDecodeError:
-                    continue
+        for video in video_docs:
+            video_url = video.get("videoUrl", "").strip()
+            if not video_url or video_url in viewed_urls:
+                continue
 
-                # Check if any genre in recommended list matches
-                matched_weights = [
-                    len(recommended_genres) - recommended_genres.index(g)
-                    for g in genre_list if g in recommended_genres
-                ]
+            genre_list = video.get("genres", [])
+            print("genre_list",genre_list)
+            if not isinstance(genre_list, list):
+                continue
 
-                if matched_weights:
-                    # Use the max weight among matched genres for this video
-                    max_weight = max(matched_weights)
-                    video_candidates.append((max_weight, video_url))
+            # Prioritize based on recommended genre match
+            matched_weights = [
+                len(recommended_genres) - recommended_genres.index(g)
+                for g in genre_list if g in recommended_genres
+            ]
 
-        # Sort by descending weight
+            if matched_weights:
+                max_weight = max(matched_weights)
+                video_candidates.append((max_weight, video_url))
+
         video_candidates.sort(reverse=True)
-
-        # Pick top N
+        # print("video_candidates", video_candidates)
         selected_urls = [url for _, url in video_candidates[:count]]
 
         if not selected_urls:
@@ -231,7 +252,6 @@ def fetch_next_url(viewed_urls, userId: str = "1234", count: int = 1):
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-    
 
 
 @app.post("/upload/")
@@ -366,11 +386,11 @@ async def finalize_upload(
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/get-recommendations/")
-def get_recommendations(userId: int, current_user: dict = Depends(get_current_active_user)):
-    # userId = 1234
-    predicted = predict_user_genres(f"{userId}.csv")
+async def get_recommendations(userId: str, current_user: dict = Depends(get_current_active_user)):
+    predicted = await predict_user_genres(userId)
     print(f"Top genres predicted for user {userId}:", predicted)
     return predicted
+
 
 @app.get("/")
 def read_root():

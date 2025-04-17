@@ -14,21 +14,34 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Define your custom prompt
 PROMPT_TEMPLATE = """
-You are a smart media classifier and content advisor.
+You are a smart media classifier and content advisor with deep familiarity with the MovieLens dataset.
 
-Analyze this visual content and answer:
+You will be given a visual media clip. Based on the content, answer the following:
 
-1. What is the most appropriate **age group** for the content? (e.g., "1-2", "2-4", "4-7", "6-10", "10-15", "13-18", "18-25", ...)
-2. Suggest **3–7 tags** that describe the content. if not possbile to suggest more tags just give me
-3. Identify potential **genres** it belongs to (e.g., Comedy, Education, Horror, Thriller, Sports, Documentary, etc.)
+1. **Age Group Classification**:
+   - What is the most appropriate age group for the content?
+   - Choose from standard ranges (e.g., "1-2", "2-4", "4-7", "6-10", "10-15", "13-18", "18-25", "25-40", "40+")
 
-Respond in JSON format like:
+2. **Tags Prediction**:
+   - Suggest 3–7 descriptive tags **from the MovieLens dataset only**.
+   - Do not invent new tags. Use only tags known in the dataset.
+   - If fewer than 3 are confidently possible, provide as many as appropriate. 
+   - Mostly the tags should be from MovieLens dataset, if there are new tags also include with them but mostly the old tags should be suggested based on the MovieLens dataset only
+
+3. **Genre Classification**:
+   - Identify 3–7 genres that the content likely belongs to.
+   - Genres must be chosen **strictly from this list** (MovieLens genres):
+     - Action, Adventure, Animation, Children's, Comedy, Crime, Documentary, Drama, Fantasy, Film-Noir, Horror, Musical, Mystery, Romance, Sci-Fi, Thriller, War, Western, Technology, Education(no genres listed)
+   - No new genres should be predicted.
+
+Respond strictly in the following JSON format:
+
+```json
 {
   "age_group": "start_age - end_age",
-  "tags": ["string", ...],
-  "genres": ["string", ...]
-}
-"""
+  "tags": ["tag1", "tag2", "tag3"],
+  "genres": ["genre1", "genre2"]
+}"""
 
 def get_mime_type(file_path: Path) -> str:
   mime_type, _ = mimetypes.guess_type(str(file_path))
