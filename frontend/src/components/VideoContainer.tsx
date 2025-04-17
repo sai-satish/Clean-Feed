@@ -1,9 +1,8 @@
-import React, { useCallback, useMemo } from 'react';
-import CloudinaryVideo from './CloudinaryVideo';
+import React, { useState, useRef, useEffect } from 'react';
+import { Info, Play, Pause } from 'lucide-react';
 import VimeoVideo from './VimeoVideo';
-import { Tag, Calendar, Info, Users } from 'lucide-react';
+import CloudinaryVideo from './CloudinaryVideo';
 
-// Define the Reel interface
 interface Reel {
   _id: string;
   videoUrl: string;
@@ -27,89 +26,137 @@ interface VideoContainerProps {
   videoRefs: React.MutableRefObject<{ [key: string]: HTMLVideoElement | null }>;
   showDetails: string | null;
   isExpanded?: boolean;
-  setProgress?: (reelId: string, progress: number) => void;
-  reel?: Reel; // Properly typed reel data
+  setProgress: (reelId: string, progress: number) => void;
+  reel: Reel;
 }
 
-const VideoContainer: React.FC<VideoContainerProps> = React.memo((props) => {
-  const {
-    videoUrl,
-    reelId,
-    showDetails,
-    toggleDetails,
-    reel
-  } = props;
+const VideoContainer: React.FC<VideoContainerProps> = ({
+  videoUrl,
+  reelId,
+  isMuted,
+  playingReel,
+  togglePlay,
+  toggleMute,
+  toggleDetails,
+  toggleExpandReel,
+  videoRefs,
+  showDetails,
+  isExpanded = false,
+  setProgress,
+  reel
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isVimeo = videoUrl.includes('vimeo.com');
+  const isPlaying = playingReel === reelId;
 
-  // Memoized check for Vimeo URLs to prevent unnecessary re-evaluation
-  const isVimeoUrl = useMemo(() => {
-    return videoUrl.includes('vimeo.com') || videoUrl.includes('player.vimeo.com');
-  }, [videoUrl]);
+  // Handle time updates from video players
+  const handleTimeUpdate = (currentTime: number, duration: number) => {
+    if (duration > 0) {
+      const progressPercentage = (currentTime / duration) * 100;
+      setProgress(reelId, progressPercentage);
+    }
+  };
 
-  // Handle clicks on the details overlay to prevent propagation
-  const handleDetailsClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    // Don't call toggleDetails here to prevent re-render loop
-  }, []);
+  // Handle video element references
+  const handleVideoRef = (element: HTMLVideoElement | HTMLIFrameElement | null) => {
+    if (element) {
+      // Cast to HTMLVideoElement since we'll only use common properties
+      videoRefs.current[reelId] = element as unknown as HTMLVideoElement;
+    } else {
+      delete videoRefs.current[reelId];
+    }
+  };
 
-  // Memoize the video component to prevent unnecessary re-renders
-  const VideoComponent = useMemo(() => {
-    return isVimeoUrl ? (
-      <VimeoVideo {...props} />
-    ) : (
-      <CloudinaryVideo {...props} />
-    );
-  }, [isVimeoUrl, props]);
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full h-full overflow-hidden"
+      onClick={() => togglePlay(reelId)}
+    >
+      {/* Video Player - either Vimeo or Cloudinary */}
+      {isVimeo ? (
+        <VimeoVideo
+          videoUrl={videoUrl}
+          isMuted={isMuted}
+          isPlaying={isPlaying}
+          onTimeUpdate={handleTimeUpdate}
+          onRef={handleVideoRef}
+        />
+      ) : (
+        <CloudinaryVideo
+          videoUrl={videoUrl}
+          isMuted={isMuted}
+          isPlaying={isPlaying}
+          onTimeUpdate={handleTimeUpdate}
+          onRef={handleVideoRef}
+        />
+      )}
 
-  // Memoize the details overlay to prevent unnecessary re-renders
-  const DetailsOverlay = useMemo(() => {
-    if (showDetails !== reelId) return null;
+      {/* Play/Pause overlay icon (visible when not expanded) */}
+      {/* {!isExpanded && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {isPlaying ? (
+            <div className="bg-black/30 rounded-full p-2 opacity-0">
+              <Pause size={24} className="text-white" />
+            </div>
+          ) : (
+            <div className="bg-black/30 rounded-full p-2">
+              <Play size={24} className="text-white" />
+            </div>
+          )}
+        </div>
+      )} */}
 
-    return (
-      <div
-        className="absolute inset-0 bg-black/75 text-white p-3 overflow-y-auto z-10"
-        onClick={handleDetailsClick}
-      >
-        {reel ? (
-          <>
+      {/* Controls */}
+      {/* <div className="absolute bottom-2 right-2 flex space-x-2">
+        {!isExpanded && (
+          <button
+            className="bg-black/30 hover:bg-black/50 rounded-full p-1 text-white"
+            onClick={(e) => toggleExpandReel(reelId, e)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <polyline points="9 21 3 21 3 15"></polyline>
+              <line x1="21" y1="3" x2="14" y2="10"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+          </button>
+        )}
+      </div> */}
+
+      {/* Reel Details Overlay */}
+      {showDetails === reelId && (
+        <div
+          className="absolute inset-0 bg-black/70 p-4 overflow-y-auto"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleDetails(reelId, e);
+          }}
+        >
+          <div className="text-white">
+            <h3 className="font-bold mb-2">Reel Details</h3>
+
             {reel.caption && (
-              <div className="mb-4">
-                <h3 className="font-bold mb-2">Caption</h3>
+              <div className="mb-2">
+                <p className="text-sm text-gray-300">Caption:</p>
                 <p>{reel.caption}</p>
               </div>
             )}
 
-            <div className="mb-4">
-              <h3 className="font-bold mb-2 flex items-center">
-                <Users size={16} className="mr-1" /> Age Group
-              </h3>
-              <div className="bg-white/20 text-sm px-2 py-1 rounded inline-block">
-                {reel.age_group}
-              </div>
+            <div className="mb-2">
+              <p className="text-sm text-gray-300">Age Group:</p>
+              <p>{reel.age_group}</p>
             </div>
 
-            {reel.genres && reel.genres.length > 0 && (
-              <div className="mb-4">
-                <h3 className="font-bold mb-2 flex items-center">
-                  <Info size={16} className="mr-1" /> Genres
-                </h3>
-                <div className="flex flex-wrap gap-1">
-                  {reel.genres.map((genre: string, index: number) => (
-                    <span key={index} className="bg-white/20 text-xs px-2 py-1 rounded">
-                      {genre}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {reel.tags && reel.tags.length > 0 && (
-              <div className="mb-4">
-                <h3 className="font-bold mb-2 flex items-center">
-                  <Tag size={16} className="mr-1" /> Tags
-                </h3>
+              <div className="mb-2">
+                <p className="text-sm text-gray-300">Tags:</p>
                 <div className="flex flex-wrap gap-1">
-                  {reel.tags.map((tag: string, index: number) => (
-                    <span key={index} className="bg-white/20 text-xs px-2 py-1 rounded">
+                  {reel.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="bg-white/20 rounded px-2 py-1 text-xs"
+                    >
                       {tag}
                     </span>
                   ))}
@@ -117,40 +164,33 @@ const VideoContainer: React.FC<VideoContainerProps> = React.memo((props) => {
               </div>
             )}
 
-            {reel.created_at && (
-              <div className="flex items-center text-sm text-white/70 mb-4">
-                <Calendar size={14} className="mr-1" />
-                {new Date(reel.created_at).toLocaleDateString()}
+            {reel.genres && reel.genres.length > 0 && (
+              <div className="mb-2">
+                <p className="text-sm text-gray-300">Genres:</p>
+                <div className="flex flex-wrap gap-1">
+                  {reel.genres.map((genre, index) => (
+                    <span
+                      key={index}
+                      className="bg-white/20 rounded px-2 py-1 text-xs"
+                    >
+                      {genre}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
 
-            <button
-              className="mt-4 bg-white/20 hover:bg-white/30 text-white rounded-full py-2 px-4 w-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleDetails(reelId, e);
-              }}
-            >
-              Close Details
-            </button>
-          </>
-        ) : (
-          <div className="h-full flex items-center justify-center">
-            <p>No details available</p>
+            {reel.created_at && (
+              <div className="mb-2">
+                <p className="text-sm text-gray-300">Created:</p>
+                <p>{new Date(reel.created_at).toLocaleDateString()}</p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    );
-  }, [showDetails, reelId, reel, handleDetailsClick, toggleDetails]);
-
-  return (
-    <div className="relative w-full h-full">
-      {VideoComponent}
-      {DetailsOverlay}
+        </div>
+      )}
     </div>
   );
-});
-
-VideoContainer.displayName = 'VideoContainer';
+};
 
 export default VideoContainer;
