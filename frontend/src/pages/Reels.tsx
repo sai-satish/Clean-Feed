@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { ChevronDown, ChevronUp, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Volume2, VolumeX, Loader2, Heart, UserRoundIcon, Info } from 'lucide-react';
 import VideoContainer from '@/components/VideoContainer';
 import axios from 'axios';
 import BottomNav from '@/components/BottomNav';
@@ -9,6 +9,7 @@ interface User {
   name: string;
   email: string;
   profilePic?: string;
+  id?: string;
 }
 
 interface Reel {
@@ -21,11 +22,13 @@ interface Reel {
   user: User;
   caption?: string;
   created_at?: string;
+  liked?: boolean;
 }
 
-interface ReelsResponse {
-  reels: Reel[];
-  count: number;
+interface NextUrlResponse {
+  userId: string;
+  recommended_genres: string[];
+  next_videos: [string, string][]; // Updated to match new response structure [videoUrl, videoId]
 }
 
 // Key for storing reels in localStorage
@@ -45,46 +48,200 @@ const Reels: React.FC = () => {
   const [playingReel, setPlayingReel] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ [key: string]: number }>({});
+  const [userId, setUserId] = useState<string>("");
+  const [fetchingMore, setFetchingMore] = useState(false);
+  const [viewedVideos, setViewedVideos] = useState<Set<string>>(new Set());
+  const [recommendedGenres, setRecommendedGenres] = useState<string[]>([]);
 
-  // Fetch reels data from localStorage or backend
+  // Get userId from localStorage
   useEffect(() => {
-    const fetchReels = async () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        if (user && user.id) {
+          setUserId(user.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error getting userId from localStorage:', error);
+      // Default userId from backend code if needed
+      setUserId("67fd69e1aab3bb979c9a529c");
+    }
+  }, []);
+
+  // Fetch initial reels data
+  useEffect(() => {
+    const fetchInitialReels = async () => {
+      if (!userId) return;
+
       try {
         setLoading(true);
 
         // Try to get data from localStorage first
-        const cachedReels = localStorage.getItem(REELS_STORAGE_KEY);
-        if (cachedReels) {
-          const parsedReels = JSON.parse(cachedReels);
-          setReels(parsedReels.reels);
-          setLoading(false);
-          setError(null);
-          console.log('Loaded reels from localStorage');
-          return;
+        const cachedReelsData = localStorage.getItem(REELS_STORAGE_KEY);
+        if (cachedReelsData) {
+          const parsedData = JSON.parse(cachedReelsData);
+          
+          // Check if the cached data is for the current user
+          if (parsedData.userId === userId) {
+            // Convert URLs to Reel objects if they're not already
+            const cachedReels = Array.isArray(parsedData.reels) ? parsedData.reels : [];
+            
+            if (cachedReels.length > 0) {
+              setReels(cachedReels);
+              setRecommendedGenres(parsedData.recommendedGenres || []);
+              setLoading(false);
+              setError(null);
+              console.log('Loaded reels from localStorage');
+              return;
+            }
+          }
         }
 
-        // If no cached data, fetch from backend
-        const response = await axios.get<ReelsResponse>('http://localhost:8000/reels/all');
-        setReels(response.data.reels);
-
-        // Cache the fetched data
-        localStorage.setItem(REELS_STORAGE_KEY, JSON.stringify(response.data));
-        console.log('Fetched reels from API and cached');
-
-        setError(null);
+        // If no valid cached data, fetch from backend
+        await fetchNextUrls(true);
+        
       } catch (err) {
-        console.error('Error fetching reels:', err);
+        console.error('Error fetching initial reels:', err);
         setError('Failed to load reels. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchReels();
-  }, []);
+    if (userId) {
+      fetchInitialReels();
+    }
+  }, [userId]);
+
+  // Fetch recommended next URLs from backend
+  const fetchNextUrls = useCallback(async (isInitialFetch = false) => {
+    if (!userId || (fetchingMore && !isInitialFetch)) return;
+    
+    try {
+      if (!isInitialFetch) {
+        setFetchingMore(true);
+      }
+      
+      const response = await axios.get<NextUrlResponse>(
+        `http://localhost:8000/fetch-next-url/?userId=${userId}&count=10`
+      );
+      
+      if (response.data.next_videos && response.data.next_videos.length > 0) {
+        // Store recommended genres
+        setRecommendedGenres(response.data.recommended_genres || []);
+        
+        // Convert next_videos array pairs into Reel objects
+        const newReels = response.data.next_videos.map(([videoUrl, videoId]) => {
+          // Check if this URL already exists in our reels
+          const existingReel = reels.find(reel => reel.videoUrl === videoUrl);
+          if (existingReel) return existingReel;
+          
+          return {
+            _id: videoId, // Use the videoId from the API response
+            videoUrl: videoUrl,
+            age_group: "",
+            tags: [],
+            genres: response.data.recommended_genres || [],
+            userId: "",
+            user: {
+              name: "Recommended", 
+              email: "",
+              profilePic: ""
+            },
+            liked: false
+          };
+        });
+        
+        // Update reels - replace all if initial fetch, append otherwise
+        setReels(prevReels => {
+          const updatedReels = isInitialFetch ? newReels : [...prevReels, ...newReels];
+          
+          // Cache the updated reels data
+          const cacheData = {
+            userId: userId,
+            reels: updatedReels,
+            recommendedGenres: response.data.recommended_genres,
+            timestamp: new Date().toISOString()
+          };
+          
+          localStorage.setItem(REELS_STORAGE_KEY, JSON.stringify(cacheData));
+          return updatedReels;
+        });
+        
+        console.log(`${isInitialFetch ? 'Initial fetch' : 'Fetched more'} reels from API and cached`);
+      } else if (isInitialFetch) {
+        setError('No reels available at this time');
+      }
+      
+    } catch (error) {
+      console.error(`Error ${isInitialFetch ? 'initializing' : 'fetching next'} URLs:`, error);
+      if (isInitialFetch) {
+        setError('Failed to load reels. Please try again later.');
+      }
+    } finally {
+      if (!isInitialFetch) {
+        setFetchingMore(false);
+      }
+    }
+  }, [userId, fetchingMore, reels]);
+
+  // Call fetchNextUrls when we need more content (when user reaches certain index)
+  useEffect(() => {
+    // If we're approaching the end of available reels (2nd to last video), fetch more
+    if (activeReelIndex >= reels.length - 2 && reels.length > 0) {
+      fetchNextUrls();
+    }
+  }, [activeReelIndex, reels.length, fetchNextUrls]);
+
+  // Generate user entry when a video is viewed
+  const recordUserEntry = useCallback(async (reel: Reel) => {
+    if (!userId || !reel || !reel._id || viewedVideos.has(reel._id)) return;
+    
+    try {
+      // Pass the videoId (reel._id) as the fileName parameter
+      await axios.get(`http://localhost:8000/generate_user_entry/?userId=${userId}&fileName=${reel._id}`);
+      
+      // Add to viewed videos set to prevent duplicate calls
+      setViewedVideos(prev => new Set(prev).add(reel._id));
+      console.log(`Recorded viewing for video: ${reel._id}`);
+    } catch (error) {
+      console.error('Error recording user entry:', error);
+    }
+  }, [userId, viewedVideos]);
+
+  // Toggle like status for a reel
+  const toggleLike = useCallback(async (reelId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!userId || !reelId) return;
+
+    console.log("video id =", reelId);
+    
+    try {
+      // Pass the videoId (reelId) as the fileName parameter
+      await axios.post(`http://localhost:8000/toggle_like/?userId=${userId}&fileName=${reelId}`);
+      
+      // Update like status in local state
+      setReels(prevReels => 
+        prevReels.map(reel => 
+          reel._id === reelId ? { ...reel, liked: !reel.liked } : reel
+        )
+      );
+    } catch (error) {
+      console.error('Error toggling like status:', error);
+    }
+  }, [userId]);
 
   // Current active reel
   const currentReel = reels[activeReelIndex];
+
+  // Record viewing of current reel
+  useEffect(() => {
+    if (currentReel) {
+      recordUserEntry(currentReel);
+    }
+  }, [currentReel, recordUserEntry]);
 
   // Handle setting progress of video
   const handleSetProgress = useCallback((reelId: string, currentProgress: number) => {
@@ -242,6 +399,27 @@ const Reels: React.FC = () => {
                   >
                     <ChevronDown className="text-white" size={24} />
                   </button>
+                  
+                  {/* Like Button */}
+                  <button
+                    onClick={(e) => toggleLike(currentReel._id, e)}
+                    className="p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors"
+                  >
+                    <Heart 
+                      className="text-white" 
+                      size={24} 
+                      fill={currentReel.liked ? "red" : "none"}
+                      color={currentReel.liked ? "red" : "white"}
+                    />
+                  </button>
+
+                  {/* Info Button for Reel Details */}
+                  <button
+                    onClick={(e) => toggleDetails(currentReel._id, e)}
+                    className="p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors"
+                  >
+                    <Info className="text-white" size={24} />
+                  </button>
                 </div>
 
                 {/* Sound Toggle */}
@@ -289,10 +467,26 @@ const Reels: React.FC = () => {
 
             {/* Reel Count Indicator */}
             <div className="absolute top-4 left-4 bg-black/40 px-3 py-1 rounded-full">
-              {/* <span className="text-white text-xs font-medium">
+              <span className="text-white text-xs font-medium">
                 {activeReelIndex + 1}/{reels.length}
-              </span> */}
+              </span>
             </div>
+            
+            {/* Recommended Genres Indicator */}
+            {recommendedGenres.length > 0 && (
+              <div className="absolute top-4 left-20 bg-black/40 px-3 py-1 rounded-full">
+                <span className="text-white text-xs font-medium">
+                  {recommendedGenres[0]}
+                </span>
+              </div>
+            )}
+            
+            {/* Loading indicator for fetching more reels */}
+            {fetchingMore && (
+              <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-black/40 px-3 py-1 rounded-full">
+                <Loader2 className="h-4 w-4 text-white animate-spin" />
+              </div>
+            )}
           </div>
         </div>
       </main>

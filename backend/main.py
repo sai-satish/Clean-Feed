@@ -223,31 +223,38 @@ async def fetch_next_url(userId: str = "67fd69e1aab3bb979c9a529c", count: int = 
                 continue
 
             genre_list = video.get("genres", [])
-            print("genre_list",genre_list)
+            print("genre_list", genre_list)
             if not isinstance(genre_list, list):
                 continue
 
-            # Prioritize based on recommended genre match
+            # Normalize genre matching (optional but helps avoid case issues)
+            genre_list_normalized = [g.lower() for g in genre_list]
+            recommended_genres_normalized = [g.lower() for g in recommended_genres]
+
             matched_weights = [
-                len(recommended_genres) - recommended_genres.index(g)
-                for g in genre_list if g in recommended_genres
+                len(recommended_genres_normalized) - recommended_genres_normalized.index(g)
+                for g in genre_list_normalized if g in recommended_genres_normalized
             ]
 
             if matched_weights:
                 max_weight = max(matched_weights)
-                video_candidates.append((max_weight, video_url))
+                video_id = str(video.get("_id"))  # Convert ObjectId to string
+                video_candidates.append((max_weight, video_url, video_id))
 
+        # Sort and select top candidates
         video_candidates.sort(reverse=True)
-        # print("video_candidates", video_candidates)
-        selected_urls = [url for _, url in video_candidates[:count]]
+        print("video_candidates", video_candidates)
 
-        if not selected_urls:
+        # Extract (url, _id) pairs
+        selected_items = [(url, _id) for _, url, _id in video_candidates[:count]]
+
+        if not selected_items:
             return JSONResponse(status_code=404, content={"message": "No new videos found for this user."})
 
         return {
             "userId": userId,
             "recommended_genres": recommended_genres,
-            "next_urls": selected_urls
+            "next_videos": selected_items  # returns list of (url, _id)
         }
 
     except Exception as e:
