@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from auth import get_current_active_user
+from auth import get_current_active_user,db
 from bson import ObjectId
 import logging
 from datetime import datetime
@@ -62,4 +62,53 @@ async def get_user_reels(current_user: dict = Depends(get_current_active_user)):
 
     except Exception as e:
         logger.error(f"Error retrieving user reels: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve reels: {str(e)}")
+
+@router.get("/all", response_description="Get all reels with user data")
+async def get_all_reels():
+    try:
+        # Query database for all reels
+        all_reels = []
+        cursor = reels_collection.find({})
+
+        # Convert cursor to list of documents
+        async for document in cursor:
+            # Serialize the document properly
+            serialized_doc = serialize_document(dict(document))
+            # Already convert ObjectId to string
+            serialized_doc["_id"] = str(document["_id"])
+
+            # Fetch user data for each reel
+            user_id = document.get("userId")
+            if user_id:
+                try:
+                    # Find user by their ObjectId
+                    user = await db.users.find_one({"_id": ObjectId(user_id)})
+                    if user:
+                        # Add user data to reel
+                        serialized_doc["user"] = {
+                            "name": user.get("name", "Unknown"),
+                            "email": user.get("email", "Unknown")
+                        }
+                    else:
+                        serialized_doc["user"] = {
+                            "name": "Unknown",
+                            "email": "Unknown"
+                        }
+                except Exception as user_error:
+                    logger.error(f"Error fetching user data: {str(user_error)}")
+                    serialized_doc["user"] = {
+                        "name": "Unknown",
+                        "email": "Unknown"
+                    }
+
+            all_reels.append(serialized_doc)
+
+        return JSONResponse(
+            status_code=200,
+            content={"reels": all_reels, "count": len(all_reels)}
+        )
+
+    except Exception as e:
+        logger.error(f"Error retrieving all reels: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve reels: {str(e)}")

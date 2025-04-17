@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -39,7 +40,7 @@ const ProfileHeader = React.memo(({
     <div className="p-4">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Avatar src={user.profilePic || "https://www.citypng.com/public/uploads/preview/download-profile-user-round-purple-icon-symbol-png-701751695033518isbhujfjbf.png?v=2025040705"} alt={user.name} size="xl" border />
+          <Avatar src={"https://www.citypng.com/public/uploads/preview/download-profile-user-round-purple-icon-symbol-png-701751695033518isbhujfjbf.png?v=2025040705"} alt={user.name} size="xl" border />
 
           <div>
             <h1 className="text-xl font-bold">{user.username}</h1>
@@ -441,6 +442,12 @@ const Profile = () => {
     }
   }, [expandedReel]);
 
+  // const handleSetProgress = useCallback((reelId: string, newProgress: number) => {
+  //   setProgress(prev => ({
+  //     ...prev,
+  //     [reelId]: newProgress
+  //   }));
+  // }, []);
   const handleSetProgress = useCallback((reelId: string, newProgress: number) => {
     setProgress(prev => ({
       ...prev,
@@ -459,29 +466,17 @@ const Profile = () => {
     const offsetX = e.clientX - rect.left;
     const percentage = offsetX / rect.width;
 
-    // For Vimeo videos, the play method might be overridden
+    // Set the current time based on the percentage
     if (videoElement.currentTime !== undefined) {
       // Handle native video element for Cloudinary
       videoElement.currentTime = percentage * videoElement.duration;
-    } else {
-      // For Vimeo, we need to use the SDK
-      const isVimeoUrl = reels.find(r => r._id === reelId)?.videoUrl.includes('vimeo.com');
-      if (isVimeoUrl && window.Vimeo?.Player) {
-        const iframe = document.querySelector(`[data-reel-id="${reelId}"] iframe`);
-        if (iframe) {
-          const player = new window.Vimeo.Player(iframe);
-          player.getDuration().then((duration: number) => {
-            player.setCurrentTime(percentage * duration);
-          });
-        }
-      }
     }
 
     setProgress(prev => ({
       ...prev,
       [reelId]: percentage * 100
     }));
-  }, [reels]);
+  }, []);
 
   // Find the expanded reel data if needed
   const expandedReelData = useMemo(() =>
@@ -576,7 +571,7 @@ const Profile = () => {
                 reel={expandedReelData}
               />
 
-              <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
+              {/* <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
                 <Timeline
                   reelId={expandedReel}
                   progress={progress}
@@ -593,7 +588,7 @@ const Profile = () => {
                   toggleMute={toggleMute}
                   formatTime={formatTime}
                 />
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
