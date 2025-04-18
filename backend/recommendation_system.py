@@ -83,7 +83,7 @@ async def predict_user_genres(userId: str):
         }
 
         boosted = boost_tags(relevant_doc)
-        print("boosted tags:", boosted)
+        # print("boosted tags:", boosted)
         all_tags.extend(boosted)
 
     if not all_tags:
@@ -91,14 +91,14 @@ async def predict_user_genres(userId: str):
         return []
 
     tag_string = " ".join(all_tags)
-    print("tag_string:", tag_string)
+    # print("tag_string:", tag_string)
 
     tag_vector = vectorizer.transform([tag_string])
-    print("tag_vector", tag_vector)
+    # print("tag_vector", tag_vector)
     prediction = classifier.predict(tag_vector)
-    print("prediction", prediction)
+    # print("prediction", prediction)
     predicted_genres = mlb.inverse_transform(prediction)
-    print("predicted_genres", predicted_genres)
+    # print("predicted_genres", predicted_genres)
 
     return predicted_genres[0] if predicted_genres else []
 

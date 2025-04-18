@@ -108,9 +108,13 @@ const Home = () => {
     try {
       const formData = new FormData();
       formData.append('file', imageBlob);
+      const token = localStorage.getItem('token');
 
-      const response = await fetch('http://localhost:8000/predict', {
+      const response = await fetch('http://localhost:8000/predict/', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       });
 
@@ -124,7 +128,7 @@ const Home = () => {
       // Check if age verification is successful
       // You would need to implement logic based on your backend response
       // This is a placeholder - adjust according to your actual response format
-      if (data.age && data.age >= 13) {
+      if (data.predicted_age && data.predicted_age >= 13) {
         setIsVerified(true);
       }
 

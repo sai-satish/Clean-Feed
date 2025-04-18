@@ -476,7 +476,7 @@ const Reels: React.FC = () => {
             {recommendedGenres.length > 0 && (
               <div className="absolute top-4 left-20 bg-black/40 px-3 py-1 rounded-full">
                 <span className="text-white text-xs font-medium">
-                  {recommendedGenres[0]}
+                  {/* {recommendedGenres[0]} */}
                 </span>
               </div>
             )}

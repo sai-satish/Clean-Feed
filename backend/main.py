@@ -204,9 +204,14 @@ async def toggle_like(userId: str = "67fd69e1aab3bb979c9a529c", fileName: str = 
 async def fetch_next_url(userId: str = "67fd69e1aab3bb979c9a529c", count: int = 1):
     try:
         # 1. Get genre recommendations
-        print("recommendations called.")
+        user_doc = await db["users"].find_one({"_id": ObjectId(userId)})
+        # if not user_doc or "age" not in user_doc:
+        #     return JSONResponse(status_code=404, content={"message": "User age not found."})
+        user_age = user_doc["age"]
+
+        # print("recommendations called.")
         recommended_genres = await get_recommendations(userId)
-        print("recommendations got")
+        # print("recommendations got")
         print("recommended_genres",recommended_genres)
 
         # 2. Get viewed URLs from user_interactions_collection
@@ -219,11 +224,22 @@ async def fetch_next_url(userId: str = "67fd69e1aab3bb979c9a529c", count: int = 
 
         for video in video_docs:
             video_url = video.get("videoUrl", "").strip()
+            video_id = str(video.get("_id"))
             if not video_url or video_url in viewed_urls:
                 continue
 
+            age_group = video.get("age_group", "")
+            if not age_group or "-" not in age_group:
+                continue
+            try:
+                min_age, max_age = map(int, age_group.split("-"))
+            except ValueError:
+                continue
+            if not (min_age <= user_age <= max_age):
+                continue  # Not appropriate for the user
+
             genre_list = video.get("genres", [])
-            print("genre_list", genre_list)
+            # print("genre_list", genre_list)
             if not isinstance(genre_list, list):
                 continue
 
@@ -243,7 +259,7 @@ async def fetch_next_url(userId: str = "67fd69e1aab3bb979c9a529c", count: int = 
 
         # Sort and select top candidates
         video_candidates.sort(reverse=True)
-        print("video_candidates", video_candidates)
+        # print("video_candidates", video_candidates)
 
         # Extract (url, _id) pairs
         selected_items = [(url, _id) for _, url, _id in video_candidates[:count]]
@@ -395,7 +411,7 @@ async def finalize_upload(
 @app.get("/get-recommendations/")
 async def get_recommendations(userId: str, current_user: dict = Depends(get_current_active_user)):
     predicted = await predict_user_genres(userId)
-    print(f"Top genres predicted for user {userId}:", predicted)
+    # print(f"Top genres predicted for user {userId}:", predicted)
     return predicted
 
 
@@ -420,6 +436,10 @@ async def predict(
 
         # Log results to console
         logger.info(f"Prediction: Age = {age}, Gender = {gender}")
+        await users_collection.update_one(
+            {"_id": current_user["_id"]},
+            {"$set": {"age": age}}
+        )
 
         return JSONResponse(content={
             "filename": file.filename,
