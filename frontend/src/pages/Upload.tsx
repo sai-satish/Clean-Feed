@@ -247,7 +247,7 @@ const Upload = () => {
       formData.append('filePath', filePath);
       formData.append('caption', caption);
 
-      const response = await fetch('http://localhost:8000/finalize-upload/', {
+      const response = await fetch('http://localhost:8000/upload/finalize/', {
         method: 'POST',
         body: formData,
         headers: {

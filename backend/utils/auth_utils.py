@@ -8,26 +8,19 @@ import jose.jwt as jwt
 from jose import JWTError
 import os
 from dotenv import load_dotenv
-from motor.motor_asyncio import AsyncIOMotorClient
-from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
 import logging
+from utils.db_utils import *
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # Load environment variables
 load_dotenv()
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-if-not-in-env")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-# Set up MongoDB connection
-client = AsyncIOMotorClient(MONGO_URL)
-db = client.cleanfeed_db
-users_collection = db.users
 
 # Security schemes
 security = HTTPBearer()

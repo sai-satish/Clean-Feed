@@ -125,7 +125,7 @@ const Reels: React.FC = () => {
       }
       
       const response = await axios.get<NextUrlResponse>(
-        `http://localhost:8000/fetch-next-url/?userId=${userId}&count=10`
+        `http://localhost:8000/user_interactions/fetch-next-url/?userId=${userId}&count=10`
       );
       
       if (response.data.next_videos && response.data.next_videos.length > 0) {
@@ -201,7 +201,7 @@ const Reels: React.FC = () => {
     
     try {
       // Pass the videoId (reel._id) as the fileName parameter
-      await axios.get(`http://localhost:8000/generate_user_entry/?userId=${userId}&fileName=${reel._id}`);
+      await axios.get(`http://localhost:8000/user_interactions/generate_user_entry/?userId=${userId}&fileName=${reel._id}`);
       
       // Add to viewed videos set to prevent duplicate calls
       setViewedVideos(prev => new Set(prev).add(reel._id));
@@ -220,7 +220,7 @@ const Reels: React.FC = () => {
     
     try {
       // Pass the videoId (reelId) as the fileName parameter
-      await axios.post(`http://localhost:8000/toggle_like/?userId=${userId}&fileName=${reelId}`);
+      await axios.post(`http://localhost:8000/user_interactions/toggle_like/?userId=${userId}&fileName=${reelId}`);
       
       // Update like status in local state
       setReels(prevReels => 

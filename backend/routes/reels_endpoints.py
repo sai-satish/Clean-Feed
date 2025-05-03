@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from auth import get_current_active_user,db
+from utils.auth_utils import get_current_active_user
 from bson import ObjectId
-import logging
 from datetime import datetime
+from utils.db_utils import *
+import logging
 
-# Set up logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 # Create router for reels endpoints
 router = APIRouter(prefix="/reels", tags=["reels"])

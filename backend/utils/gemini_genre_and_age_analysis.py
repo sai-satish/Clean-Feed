@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 import mimetypes
 from PIL import Image
 import google.generativeai as genai
-# from google.generativeai import types
 load_dotenv()
 
 
@@ -62,9 +61,6 @@ async def analyze_content(file_path: Path) -> dict:
             return {"error": "Failed to load image"}
     else:
         try:
-            # with open(file_path, "rb") as file:
-            #     data = file.read()
-            # prompt_parts.append(data)
             prompt_parts.append(genai.upload_file(file_path))
         except Exception as e:
             print(f"Error reading file: {e}")
@@ -73,11 +69,9 @@ async def analyze_content(file_path: Path) -> dict:
     try:
         response = await model.generate_content_async(prompt_parts)
 
-        # ✅ Correct call (not awaitable)
         response.resolve()
 
         text = response.text.strip()
-        # print("Response text:", text)
 
         # Try to extract the JSON part
         json_start = text.find("{")
@@ -98,24 +92,3 @@ async def analyze_content(file_path: Path) -> dict:
     except Exception as e:
         print(f"Gemini API error: {e}")
         return {"error": f"Failed to get response from Gemini: {e}"}
-
-
-
-async def helper_analyze_content(user_id: str, file_path: Path):
-    try:
-        # Call Gemini analysis
-        analysis_result = await analyze_content(file_path)
-
-        if "error" not in analysis_result:
-            # Save metadata in a sidecar .json file
-            metadata_file = file_path.with_suffix(file_path.suffix + ".metadata.json")
-
-            with open(metadata_file, "w") as f:
-                json.dump(analysis_result, f, indent=4)
-
-            print(f"Metadata saved to: {metadata_file}")
-        else:
-            print(f"Analysis failed for {file_path}: {analysis_result['error']}")
-
-    except Exception as e:
-        print(f"Error in helper_analyze_content: {e}")

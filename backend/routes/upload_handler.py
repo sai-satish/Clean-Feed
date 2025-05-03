@@ -1,41 +1,32 @@
-from fastapi import APIRouter, File, UploadFile, Form, BackgroundTasks, HTTPException, Depends
+from fastapi import APIRouter, File, UploadFile, Form, BackgroundTasks, Depends
 from fastapi.responses import JSONResponse
 from pathlib import Path
 import shutil
-import logging
 import json
+from dotenv import load_dotenv
 from datetime import datetime, timezone
 from bson import ObjectId
+from utils.auth_utils import get_current_active_user
+from utils.gemini_genre_and_age_analysis import analyze_content
+from utils.cloudinary_utils import upload_to_cloudinary
+from utils.db_utils import *
+import logging
 
-# Import required modules
-from auth import users_collection, get_current_active_user
-from gemini_genre_and_age_analysis import analyze_content
-from cloudinary_utils import upload_to_cloudinary
-
-# Set up logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create router instance
-router = APIRouter(tags=["uploads"])
-
-# Base directory for temporary storage
 BASE_TEMP_DIR = Path("Clean-Feed/temp")
 
-# Import MongoDB connection
-from motor.motor_asyncio import AsyncIOMotorClient
-from dotenv import load_dotenv
-import os
 
-# Load environment variables
+# Set up logging
 load_dotenv()
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 
-# MongoDB connection
-client = AsyncIOMotorClient(MONGO_URL)
-db = client.cleanfeed_db
-reels_collection = db.reels
 
-@router.post("/upload/")
+# Create router instance
+router = APIRouter(prefix="/upload",tags=["uploads"])
+
+
+@router.post("/")
 async def upload_file(
     background_tasks: BackgroundTasks,
     userId: str = Form(...),
@@ -83,7 +74,7 @@ async def upload_file(
         logger.error(f"Upload error: {str(e)}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-@router.post("/finalize-upload/")
+@router.post("/finalize")
 async def finalize_upload(
     userId: str = Form(...),
     filePath: str = Form(...),
@@ -165,3 +156,7 @@ async def finalize_upload(
     except Exception as e:
         logger.error(f"Finalize upload error: {str(e)}")
         return JSONResponse(status_code=500, content={"error": str(e)})
+    
+def init_upload_router():
+    """Initialize the router"""
+    return router
