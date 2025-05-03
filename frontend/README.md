@@ -1,73 +1,112 @@
-# Welcome to your Lovable project
+# ⚛️ Frontend – AI-Based Age-Aware Content Platform
 
-## Project info
+This is the **React + TypeScript + TailwindCSS** frontend for the AI-powered age-personalization system. It provides a modern interface to capture facial images for real-time age verification and display personalized, age-appropriate content to users.
 
-**URL**: https://lovable.dev/projects/9e5b425c-90cc-448f-8a6c-882d1458cd34
+---
 
-## How can I edit this code?
+## 🧩 About the Frontend
 
-There are several ways of editing your application.
+The frontend acts as a user-friendly interface to the AI system, enabling:
 
-**Use Lovable**
+- Secure facial image capture
+- Age estimation results from the backend
+- Personalized content display (reels, dashboard, uploads)
+- Smooth SPA (Single Page Application) navigation and responsive design
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9e5b425c-90cc-448f-8a6c-882d1458cd34) and start prompting.
+This UI ensures a **privacy-aware** user experience while helping users interact with the core AI services effectively.
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## 🔑 Key Features
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- 🎨 **TailwindCSS-powered responsive UI**
+- 🧠 **Age gate**: Webcam-based age verification using `getUserMedia()`
+- 📺 **Dynamic reels/dashboard** filtered based on estimated age
+- 📤 **Content upload interface** with moderation integration
+- 🧼 **Creator controls** for content age-tagging
+- ⚡ **Fast routing and client-side state management**
+- 📄 **React Router v6+** for page transitions
+- 🌙 Clean and modern UI/UX with potential for dark mode support
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+## 🛠️ Tech Stack
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+| Area           | Tools Used                              |
+|----------------|------------------------------------------|
+| Framework      | React 18+, Vite                         |
+| Language       | TypeScript 5+                           |
+| UI Styling     | TailwindCSS 3.3+                        |
+| Routing        | React Router 6.15+                      |
+| API Requests   | Axios 1.4+                              |
+| Webcam Access  | Web API: `navigator.mediaDevices.getUserMedia` |
+| State Handling | Context API + useState/useEffect        |
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 📁 Folder Structure
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+frontend/
+├── public/                 # Static index.html and assets
+├── src/
+│   ├── components/         # Reusable UI elements (Navbar, Cards, Loader)
+│   ├── pages/              # Screens: Login, Reels, Upload, Profile, AgeGate
+│   ├── constants/                # Axios instances and API functions
+│   ├── hooks/              # Custom React hooks
+│   ├── contexts/              # Helpers (e.g. age filters)
+│   ├── lib/             # Icons, logos, backgrounds
+│   └── App.tsx            # Main application wrapper
+├── tailwind.config.js      # TailwindCSS configuration
+├── vite.config.ts          # Vite build setup
+└── README.md               # You're here!
 ```
+---
 
-**Edit a file directly in GitHub**
+## 📡 API Endpoints Used
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+The frontend communicates with a FastAPI backend using the following RESTful APIs:
 
-**Use GitHub Codespaces**
+- `POST /predict-age`  
+  → Accepts a facial image (captured via webcam) and returns predicted age and gender.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `GET /recommendations`  
+  → Returns age-appropriate personalized content for the logged-in user.
 
-## What technologies are used for this project?
+- `POST /upload-content`  
+  → Allows users/creators to upload content along with metadata like title, description, and manual age tags.
 
-This project is built with:
+- `GET /profile`  
+  → Fetches the authenticated user's content and interaction data.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+All requests use `application/json` headers, and media/image uploads use `multipart/form-data`.
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/9e5b425c-90cc-448f-8a6c-882d1458cd34) and click on Share -> Publish.
+## 🧪 Testing & Debugging
 
-## Can I connect a custom domain to my Lovable project?
+- All forms include client-side validation
+- API errors are gracefully handled with UI feedback
+- Development uses local `.env` for API base URLs
+- Live reloading and debug logging are built-in via Vite
 
-Yes it is!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 💻 How to Clone and Run Locally
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+```bash
+# Step 1: Clone the repository
+git clone https://github.com/sai-satish/Clean-Feed/.git
+cd Clean-Feed/frontend
+
+# Step 2: Install dependencies
+npm install
+
+# Step 3: Start the local development server
+npm run dev
+
+# The app should now be running at http://localhost:8080
+```
+---
+
+⭐ If you find this project useful, don't forget to give it a star!
